@@ -7,3 +7,6 @@ edition = "2021"
 crate-type = ["cdylib"]
    
 [dependencies]
+
+#[build]
+#rustflags = ["-C", "link-args=-z stack-size=640000"]
