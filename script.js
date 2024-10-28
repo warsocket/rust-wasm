@@ -3,36 +3,88 @@ window.addEventListener("load", main) // or document DOMContentLoaded
 async function main(){
 	let resp = await fetch("my_project.wasm")
 
-
-	//const importObject = { Math }; //needs unsafe in rust
-	// const memory = new WebAssembly.Memory({ //64k
-  	// 	initial: 16,
-  	// 	maximum: 16,
-	// })
-	// const view = new Uint8Array(memory.buffer)
+	//This wont abe accessible in rust unless we use, link-args=--import-memory, but then rust wont be able to manage memory itself (which is quite convenient)
+	const js_memory = new WebAssembly.Memory({ //in 64k chunks, so 640k in this case
+  		initial: 10,
+  		maximum: 10,
+	})
 
 
-	// console.log(memory)
-	// console.log(memory.buffer)
-	// console.log(`view[0] = ${view[0]}`)
+	const importObject = { 
+		js: {mem: js_memory}, //default place to import memory
+		env:{ //default module when no name is given in rust
+			console_log(ptr, len){
+				const decoder = new TextDecoder()
+				const str = decoder.decode(wasm.instance.exports.memory.buffer.slice(ptr, ptr+len)) //this works because of sort of lazy evaluation of wasm object
+				console.log(str)
+			},
+		},
+		Math: {
+			random: () => Math.random(),
+		},		
+		console, //just plainly import console module wich has function log, warm, etc (remember console.log)
+	};
 
-	// const importObject = { js: {mem: memory}, Math: {random: () => Math.random()} };
-	const importObject = { Math: {random: () => Math.random()}, console };
+
 	const wasm = await WebAssembly.instantiateStreaming(resp, importObject)
 
 
-	console.log("add")
+
+	console.log("add:")
 	console.log(wasm.instance.exports.add(7, 3))
 
-	console.log("sub")
+	console.log("sub:")
 	console.log(wasm.instance.exports.sub(7, 3))
 
-	console.log("rnd")
+	console.log("rnd:")
 	console.log(wasm.instance.exports.rnd())
 
-	console.log("print")
-	wasm.instance.exports.print()
+	////////////////////////////////////////////////////////////////////////////////////////
 
+	console.log("print something from wasm:")
+	wasm.instance.exports.print_something_from_wasm()
+
+	console.log("print something from wasm manually, directly invokes console.log with 2 parameters:")
+	wasm.instance.exports.print_something_from_wasm_manually()
+
+	////////////////////////////////////////////////////////////////////////////////////////
+
+	console.log("get wasm initialised memory (continuous memory so gets pointer):")
+	const ptr = wasm.instance.exports.get_ptr()
+	console.log(ptr)
+
+	console.log("write a byte in wasm memory [adress:0 of array in rust] using rust function, and read back using JS:")
+	const byte = Math.floor(Math.random()*0x100)
+
+	console.log(`wrinting byte: ${byte}`)
+	wasm.instance.exports.put(byte)
+
+	const wasmMemory = new Uint8Array(wasm.instance.exports.memory.buffer);
+	console.log(`reading byte: ${wasmMemory[ptr]}`)
+
+	////////////////////////////////////////////////////////////////////////////////////////
+
+	console.log("print wasm memory size is pages (64K):")
+	console.log( wasm.instance.exports.memory.buffer.byteLength / 1024 / 64)
+
+
+	console.log("Read a custom sections from section 'CustomSection':")
+	let sections = WebAssembly.Module.customSections(wasm.module, "CustomSection");
+	for (const arr of sections){
+		const decoder = new TextDecoder();
+		const text = decoder.decode(arr);
+		console.log(`    ${text}`)
+	}
+	
+	
+	console.log("Read a custom sections from section 'CustomSection2':")
+	sections = WebAssembly.Module.customSections(wasm.module, "CustomSection2");
+	for (const arr of sections){
+		const decoder = new TextDecoder();
+		const text = decoder.decode(arr);
+		console.log(`    ${text}`)
+	}
+	
 
 	// let wasmMemory = new Uint8Array(wasm.instance.exports.memory.buffer);
 	// let ptr = wasm.instance.exports.get_ptr()

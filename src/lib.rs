@@ -2,9 +2,9 @@
 use std::ffi::CString;
 use std::ffi::c_char;
 
-static mut mem:[u8;0xFF] = [42;0xFF];
+static mut mem_from_wasm:[u8;0xFF] = [42;0xFF];
 
-#[no_mangle]
+#[no_mangle] //same as  #[export_name = "add"]
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
@@ -30,34 +30,58 @@ pub extern fn rnd() -> usize {
 
 #[export_name = "get_ptr"]
 pub fn get_ptr() -> *const u8 {
-    unsafe { mem.as_ptr() }
+    unsafe { mem_from_wasm.as_ptr() }
 }
 
 
 #[export_name = "put"]
 pub fn put(b:u8) -> () {
     unsafe{
-        mem[0] = b;
+        mem_from_wasm[0] = b;
     }
 }
 
 
-#[export_name = "print"]
-pub fn print() -> () {
+// the following 2 lines are default Module name and type for extern:
+// #[link(wasm_import_module = "env")]
+// extern "C" {
+
+extern{
+    fn console_log(ptr:*const u8, len:usize) -> ();
+}
+
+fn wasm_log(str:&str){
     unsafe{
-        log( "xxxzzz" );
+        console_log(str.as_ptr(), str.len());
+    }    
+}
+
+#[export_name = "print_something_from_wasm"]
+pub fn print_something_from_wasm() -> () {
+    wasm_log( "Hello World!" );
+}
+
+
+
+#[link(wasm_import_module = "console")] //our name as defined in wasm start in JS
+extern{
+    fn log(ptr:&str) -> (); //as you can see rust will translate this &str to *const u8 + usize
+}
+
+
+#[export_name = "print_something_from_wasm_manually"]
+pub fn print_something_from_wasm_manually() -> () {
+    unsafe{
+        log( "Hello World!" );    
     }
 }
 
 
-#[link(wasm_import_module = "console")]
-extern "C" {
-    pub fn log(s:&str);
-}
+
+//somehow these section return an array of memory and you should be able to get multiple in per section, don't know how yet
+#[link_section = "CustomSection"]
+pub static SECTION_A: [u8; 24] = *b"This is a custom section";    
 
 
-// #[link(wasm_import_module = "Console")]
-// extern{
-//     fn log(ptr:usize, len:usize) -> ();
-// }
-
+#[link_section = "CustomSection2"]
+pub static SECTION_B: [u8; 26] = *b"This is a custom section 2";

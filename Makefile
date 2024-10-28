@@ -14,8 +14,12 @@ clean:
 	cargo clean
 	rm my_project.wasm
 
-my_project.wasm: target/wasm32-unknown-unknown/release/my_project.wasm
+# my_project.wasm: target/wasm32-unknown-unknown/release/my_project.wasm
+my_project.wasm: target/wasm32-unknown-unknown/debug/my_project.wasm
 	cp target/wasm32-unknown-unknown/release/my_project.wasm .
 
 target/wasm32-unknown-unknown/release/my_project.wasm:
+	cargo build --release --target=wasm32-unknown-unknown
+
+target/wasm32-unknown-unknown/debug/my_project.wasm:
 	cargo build --release --target=wasm32-unknown-unknown
