@@ -1,7 +1,32 @@
 window.addEventListener("load", main) // or document DOMContentLoaded
 
 async function main(){
-	let resp = await fetch("my_project.wasm")
+
+	let resp
+
+	resp = await fetch("./target/wasm32-unknown-unknown/release/wasm_example.wasm")
+	// consol.
+	if (!resp.ok){
+
+		// console.log("release build not found, trying debug build.")
+
+		resp = await fetch("./target/wasm32-unknown-unknown/debug/wasm_example.wasm")
+		if (!resp.ok){
+			// console.log("debug build not found, no WASM module found!")
+			document.write("DEBUG an RELEASE build wasm module not found!")
+			
+		}else{
+			document.write("Using DEBUG build wasm module:<br>See console for demo output")
+		}
+		
+
+	}else{
+		document.write("Using RELEASE build wasm module:<br>See console for demo output")
+	}
+
+
+
+	
 
 	//This wont abe accessible in rust unless we use, link-args=--import-memory, but then rust wont be able to manage memory itself (which is quite convenient)
 	const js_memory = new WebAssembly.Memory({ //in 64k chunks, so 640k in this case
